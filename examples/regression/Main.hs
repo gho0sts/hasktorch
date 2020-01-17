@@ -1,30 +1,36 @@
+{-# LANGUAGE BlockArguments #-}
 {-# LANGUAGE RecordWildCards #-}
 {-# LANGUAGE FunctionalDependencies #-}
 
 module Main where
 
-import Control.Monad (foldM)
-
-import Torch.Tensor
+import Control.Monad (foldM, when)
+import Torch.Autograd (grad, makeIndependent, toDependent)
 import Torch.DType (DType (Float))
-import Torch.TensorFactories (ones', rand', randn')
-import Torch.Functions
-import Torch.Autograd
+import Torch.Functional (squeezeAll, matmul, mse_loss)
 import Torch.NN
+  ( Linear (Linear, bias, weight),
+    LinearSpec (LinearSpec, in_features, out_features),
+    flattenParameters,
+    linear,
+    replaceParameters,
+    sample,
+    sgd,
+  )
+import Torch.Tensor (Tensor, asTensor)
+import Torch.TensorFactories (ones', rand', randn')
 
 batch_size = 64
 num_iters = 2000
 num_features = 3
 
 model :: Linear -> Tensor -> Tensor
-model Linear{..} input = squeezeAll $ matmul input depWeight + depBias
-  where
-    (depWeight, depBias) = (toDependent weight, toDependent bias)
+model state input = squeezeAll $ linear state input
 
 groundTruth :: Tensor -> Tensor
 groundTruth t = squeezeAll $ matmul t weight + bias
   where
-    weight = 42.0 * ones' [num_features, 1]
+    weight = asTensor ([42.0, 64.0, 96.0] :: [Float])
     bias = 3.14 * ones' [1]
     
 printParams :: Linear -> IO ()
@@ -44,10 +50,8 @@ main = do
             loss = mse_loss output expected_output
             flat_parameters = flattenParameters state
             gradients = grad loss flat_parameters
-        if i `mod` 100 == 0 then
-          putStrLn $ "Loss: " ++ show loss
-        else
-          pure ()
+        when (i `mod` 100 == 0) do
+            putStrLn $ "Iteration: " ++ show i ++ " | Loss: " ++ show loss
         new_flat_parameters <- mapM makeIndependent $ sgd 5e-3 flat_parameters gradients
         return $ replaceParameters state $ new_flat_parameters
     printParams trained

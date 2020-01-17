@@ -53,7 +53,6 @@ tenTypeToCppType tentype =
     IntList _ -> "std::vector<int64_t>"
     ScalarQ -> "at::Scalar"
     ScalarType -> "at::ScalarType"
-    SparseTensorRef -> "at::SparseTensorRef"
 
 ctypeToCppType :: CType -> Text
 ctypeToCppType ct =
@@ -95,6 +94,12 @@ parsableToCppType parsable =
     P.CppClass _ cpptype _ -> fromString cpptype
     Backend -> "at::Backend"
     Layout -> "at::Layout"
+    MemoryFormat -> "at::MemoryFormat"
+    QScheme -> "at::QScheme"
+    ConstQuantizerPtr -> "at::ConstQuantizerPtr"
+    Dimname -> "at::Dimname"
+    DimnameList -> "std::vector<at::Dimname>"
+    Symbol -> "at::Symbol"
 
 
 ------ To Haskell Type ------
@@ -121,7 +126,6 @@ tenTypeToHsType tentype =
     IntList _ -> "IntArray"
     ScalarQ -> "Scalar"
     ScalarType -> "ScalarType"
-    SparseTensorRef -> "SparseTensorRef"
 
 
 
@@ -150,12 +154,11 @@ tenTypeToHigherHsType tentype =
     IntList _ -> "[Int]"
     ScalarQ -> "Float"
     ScalarType -> "DType"
-    SparseTensorRef -> "SparseTensorRef"
 
 stltypeToHsType :: STLType -> Text
 stltypeToHsType t =
   case t of
-    P.Array ct len -> [st|(StdArray #{ctypeToHsType ct} #{len})|]
+    P.Array ct len -> [st|(StdArray '(#{ctypeToHsType ct},#{len}))|]
 
 stltypeToHigherHsType :: STLType -> Text
 stltypeToHigherHsType t =
@@ -217,10 +220,16 @@ parsableToHsType parsable =
     CType ct -> ctypeToHsType ct
     STLType t -> stltypeToHsType t
     CppString -> "StdString"
-    Tuple parsables -> [st|(#{T.intercalate "," (map parsableToHsType parsables)})|]
+    Tuple parsables -> [st|StdTuple '(#{T.intercalate "," (map parsableToHsType parsables)})|]
     P.CppClass _ _ hstype -> fromString hstype
     Backend -> "Backend"
     Layout -> "Layout"
+    MemoryFormat -> "MemoryFormat"
+    QScheme -> "QScheme"
+    ConstQuantizerPtr -> "ConstQuantizerPtr"
+    Dimname -> "Dimname"
+    DimnameList -> "DimnameList"
+    Symbol -> "Symbol"
 
 parsableToHigherHsType :: Parsable -> Text
 parsableToHigherHsType parsable =
@@ -237,6 +246,12 @@ parsableToHigherHsType parsable =
     P.CppClass _ _ hstype -> fromString hstype
     Backend -> "Backend"
     Layout -> "Layout"
+    MemoryFormat -> "MemoryFormat"
+    QScheme -> "QScheme"
+    ConstQuantizerPtr -> "ConstQuantizerPtr"
+    Dimname -> "Dimname"
+    DimnameList -> "[Dimname]"
+    Symbol -> "Symbol"
 
 
 ------ To initial characters ------
@@ -262,7 +277,6 @@ tenTypeToInitial tentype =
     IntList _ -> "l"
     ScalarQ -> "s"
     ScalarType -> "s"
-    SparseTensorRef -> "r"
 
 stltypeToInitial :: STLType -> Text
 stltypeToInitial t =
@@ -303,6 +317,12 @@ parsableToInitial parsable =
     P.CppClass _ _ _ -> "c"
     Backend -> "B"
     Layout -> "L"
+    MemoryFormat -> "M"
+    QScheme -> "S"
+    ConstQuantizerPtr -> "Q"
+    Dimname -> "n"
+    DimnameList -> "N"
+    Symbol -> "s"
 
 isCType :: Parsable -> Bool
 isCType p =
@@ -311,6 +331,8 @@ isCType p =
     DeviceType -> True
     Backend -> True
     Layout -> True
+    MemoryFormat -> True
+    QScheme -> True
     CType _ -> True
     Ptr _ -> True
     _ -> False
@@ -336,6 +358,12 @@ retToCppType parsable =
     P.CppClass _ cpptype _ -> fromString cpptype
     Backend -> "at::Backend"
     Layout -> "at::Layout"
+    MemoryFormat -> "at::MemoryFormat"
+    QScheme -> "at::QScheme"
+    ConstQuantizerPtr -> "at::ConstQuantizerPtr"
+    Dimname -> "at::Dimname"
+    DimnameList -> "std::vector<at::Dimname>"
+    Symbol -> "at::Symbol"
 
 
 
@@ -418,7 +446,7 @@ functionToCpp is_managed add_type_initials prefix suffix fn =
     ret_hstype =
       if isCType (retType fn)
       then [st|#{parsableToHsType (retType fn)}|]
-      else [st|#{pointer} #{parsableToHsType (retType fn)}|]
+      else [st|#{pointer} #{withParens (parsableToHsType (retType fn))}|]
     ret_wrapper :: Text
     ret_wrapper =
       if isCType (retType fn)
@@ -520,7 +548,7 @@ methodToCpp class' is_constructor is_managed add_type_initials prefix suffix fn 
     ret_hstype =
       if isCType (retType fn)
       then [st|#{parsableToHsType (retType fn)}|]
-      else [st|#{pointer} #{parsableToHsType (retType fn)}|]
+      else [st|#{pointer} #{withParens (parsableToHsType (retType fn))}|]
     isIntArrayRef (TenType (IntList _)) = True
     isIntArrayRef _ = False
     ret_wrapper :: Text -> Text

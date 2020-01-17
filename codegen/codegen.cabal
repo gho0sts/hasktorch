@@ -2,7 +2,7 @@ name:                codegen
 version:             0.1.0.0
 synopsis:            parse torch yaml spec files, generate code
 -- description:
-homepage:            https://github.com/githubuser/ffi-experimental#readme
+homepage:            https://github.com/hasktorch/hasktorch#readme
 license:             BSD3
 author:              Austin Huang
 maintainer:          hasktorch@gmail.com
@@ -10,11 +10,11 @@ copyright:           2018 Austin Huang
 category:            Codegen
 build-type:          Simple
 cabal-version:       >=1.10
+extra-source-files:  test/Declarations.yaml
 
 library
   exposed-modules:
     ParseDeclarations
-    ParseDerivatives
     ParseFunctionSig
     ParseTuples
     ParseClass
@@ -37,6 +37,7 @@ library
     , string-conversions
     , directory
     , unordered-containers
+    , containers
   extra-libraries: stdc++
   ghc-options:     -Wall
 

@@ -76,6 +76,12 @@ data Parsable
     | CppClass SignatureStr CppTypeStr HsTypeStr
     | Backend
     | Layout
+    | MemoryFormat
+    | QScheme
+    | ConstQuantizerPtr
+    | Dimname
+    | DimnameList
+    | Symbol
     deriving (Eq, Show, Generic)
 
 data CType
@@ -119,7 +125,6 @@ data TenType = Scalar
     | IntList { dim :: Maybe [Int] }
     | ScalarQ
     | ScalarType
-    | SparseTensorRef
     deriving (Eq, Show)
 
 type Parser = Parsec Void String
@@ -227,12 +232,20 @@ identifier = (lexm . try) (p >>= check)
 -- TenType ScalarQ
 -- >>> parseTest typ "ScalarType"
 -- TenType ScalarType
--- >>> parseTest typ "SparseTensorRef"
--- TenType SparseTensorRef
 -- >>> parseTest typ "Backend"
 -- Backend
 -- >>> parseTest typ "Layout"
 -- Layout
+-- >>> parseTest typ "MemoryFormat"
+-- MemoryFormat
+-- >>> parseTest typ "QScheme"
+-- QScheme
+-- >>> parseTest typ "Dimname"
+-- Dimname
+-- >>> parseTest typ "DimnameList"
+-- DimnameList
+-- >>> parseTest typ "Symbol"
+-- Symbol
 -- >>> parseTest typ "Storage"
 -- StorageType
 -- >>> parseTest typ "Tensor"
@@ -303,19 +316,24 @@ typ =
   other =
     ((lexm $ string "Backend") >> (pure $ Backend)) <|>
     ((lexm $ string "Layout") >> (pure $ Layout)) <|>
+    ((lexm $ string "MemoryFormat") >> (pure $ MemoryFormat)) <|>
+    ((lexm $ string "QScheme") >> (pure $ QScheme)) <|>
+    ((lexm $ string "DimnameList") >> (pure $ DimnameList)) <|>
+    try ((lexm $ string "Dimname") >> (pure $ Dimname)) <|>
+    ((lexm $ string "Symbol") >> (pure $ Symbol)) <|>
     ((lexm $ string "Device") >> (pure $ DeviceType)) <|>
     ((lexm $ string "Generator *") >> (pure $ Ptr GeneratorType)) <|>
     ((lexm $ string "Generator*") >> (pure $ Ptr GeneratorType)) <|>
     ((lexm $ string "Generator?") >> (pure $ Ptr GeneratorType)) <|>
-    ((lexm $ string "Storage") >> (pure $ StorageType))
+    ((lexm $ string "Storage") >> (pure $ StorageType)) <|>
+    ((lexm $ string "ConstQuantizerPtr") >> (pure $ ConstQuantizerPtr))
   cppclass = foldl (<|>) (fail "Can not parse cpptype.") $ map (\(sig,cpptype,hstype) -> ((lexm $ string sig) >> (pure $ CppClass sig cpptype hstype))) cppClassList
   scalar =
     ((lexm $ string "Scalar?") >> (pure $ TenType ScalarQ)) <|>
     ((lexm $ string "ScalarType") >> (pure $ TenType ScalarType)) <|>
     ((lexm $ string "Scalar") >> (pure $ TenType Scalar)) <|>
     ((lexm $ string "real") >> (pure $ TenType Scalar)) <|>
-    ((lexm $ string "accreal") >> (pure $ TenType Scalar)) <|>
-    ((lexm $ string "SparseTensorRef") >> (pure $ TenType SparseTensorRef))
+    ((lexm $ string "accreal") >> (pure $ TenType Scalar))
   idxtensor = do
     _ <- lexm $ string "IndexTensor"
     pure $ TenType IndexTensor
